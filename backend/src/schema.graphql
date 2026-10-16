@@ -1,0 +1,200 @@
+"""
+GraphQL facade over https://dummyjson.com.
+Products and carts are synced from DummyJSON into SQLite and served from the database.
+Send `Authorization: Bearer <accessToken>` (from the `login` mutation) for fields marked 🔒.
+"""
+type Query {
+  "🔒 The logged-in user."
+  me: User!
+
+  "Paged, searchable product list (served from SQLite)."
+  products(
+    search: String
+    category: String
+    limit: Int = 20
+    skip: Int = 0
+    sortBy: ProductSort = ID
+    order: SortOrder = ASC
+  ): ProductPage!
+
+  product(id: Int!): Product
+
+  "Distinct product categories in the database."
+  categories: [String!]!
+
+  "Paged cart list (served from SQLite). Filter by userId if needed."
+  carts(userId: Int, limit: Int = 20, skip: Int = 0): CartPage!
+
+  cart(id: Int!): Cart
+
+  "🔒 Carts belonging to the logged-in user, local cart first."
+  myCarts: [Cart!]!
+
+  "🔒 The logged-in user's own shopping cart, prices refreshed from the products table. Null until something is added."
+  myCart: Cart
+
+  "When each entity was last synced from DummyJSON."
+  syncStatus: [SyncResult!]!
+}
+
+type Mutation {
+  "Log in through DummyJSON /auth/login. The user and session are stored in SQLite."
+  login(username: String!, password: String!, expiresInMins: Int = 60): AuthPayload!
+
+  "🔒 Forget the current session on the server."
+  logout: Boolean!
+
+  "Re-pull every product from DummyJSON /products into SQLite."
+  syncProducts: SyncResult!
+
+  "Re-pull every cart from DummyJSON /carts into SQLite."
+  syncCarts: SyncResult!
+
+  "Re-pull products and carts."
+  syncAll: [SyncResult!]!
+
+  "🔒 Add a product to the logged-in user's cart (stored in SQLite)."
+  addToCart(productId: Int!, quantity: Int = 1): Cart!
+
+  "🔒 Set a product's quantity in the logged-in user's cart. 0 removes it."
+  updateCartItem(productId: Int!, quantity: Int!): Cart!
+
+  "🔒 Delete one product from the logged-in user's cart."
+  removeFromCart(productId: Int!): Cart!
+
+  "🔒 Delete every item in the logged-in user's cart."
+  clearCart: Cart!
+}
+
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String
+  user: User!
+}
+
+type User {
+  id: Int!
+  username: String!
+  email: String
+  firstName: String
+  lastName: String
+  fullName: String!
+  gender: String
+  image: String
+  lastLoginAt: String
+  carts: [Cart!]!
+}
+
+enum ProductSort {
+  ID
+  TITLE
+  PRICE
+  RATING
+  STOCK
+}
+
+enum SortOrder {
+  ASC
+  DESC
+}
+
+type ProductPage {
+  items: [Product!]!
+  total: Int!
+  skip: Int!
+  limit: Int!
+  hasMore: Boolean!
+}
+
+type Product {
+  id: Int!
+  title: String!
+  description: String
+  category: String
+  price: Float!
+  discountPercentage: Float
+  "Price after discount, rounded to 2 decimals."
+  finalPrice: Float!
+  rating: Float
+  stock: Int
+  brand: String
+  sku: String
+  weight: Float
+  warrantyInformation: String
+  shippingInformation: String
+  availabilityStatus: String
+  returnPolicy: String
+  minimumOrderQuantity: Int
+  thumbnail: String
+  tags: [String!]!
+  images: [String!]!
+  dimensions: Dimensions
+  meta: ProductMeta
+  reviews: [Review!]!
+  syncedAt: String!
+}
+
+type Dimensions {
+  width: Float
+  height: Float
+  depth: Float
+}
+
+type ProductMeta {
+  createdAt: String
+  updatedAt: String
+  barcode: String
+  qrCode: String
+}
+
+type Review {
+  rating: Int
+  comment: String
+  date: String
+  reviewerName: String
+  reviewerEmail: String
+}
+
+type CartPage {
+  items: [Cart!]!
+  total: Int!
+  skip: Int!
+  limit: Int!
+  hasMore: Boolean!
+}
+
+type Cart {
+  id: Int!
+  userId: Int!
+  total: Float!
+  discountedTotal: Float!
+  totalProducts: Int!
+  totalQuantity: Int!
+  "True for carts created through this API (not from DummyJSON)."
+  isLocal: Boolean!
+  items: [CartItem!]!
+  syncedAt: String!
+  "When the cart (or its prices) last changed."
+  updatedAt: String!
+}
+
+type CartItem {
+  productId: Int!
+  title: String!
+  price: Float!
+  quantity: Int!
+  total: Float!
+  discountPercentage: Float!
+  "Unit price after discount."
+  finalPrice: Float!
+  discountedTotal: Float!
+  thumbnail: String
+  "Full product record from the products table (null if not synced yet)."
+  product: Product
+}
+
+type SyncResult {
+  entity: String!
+  count: Int!
+  syncedAt: String!
+}

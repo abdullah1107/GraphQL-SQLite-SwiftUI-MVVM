@@ -1,0 +1,22 @@
+{
+  "name": "graphql-demo-server",
+  "version": "1.0.0",
+  "description": "GraphQL API over DummyJSON (auth, products, carts) with a local SQLite database",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "sync": "node scripts/sync.js",
+    "reset-db": "node scripts/reset-db.js"
+  },
+  "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^16.4.5",
+    "graphql": "^16.11.0"
+  }
+}
